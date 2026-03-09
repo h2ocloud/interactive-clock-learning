@@ -81,6 +81,7 @@ const ctx = cv.getContext('2d');
 const modeSel = document.getElementById('mode');
 let time = { h: 9, m: 0 };
 let draggingMin = false;
+let draggingHour = false;
 let lastRing = null;
 
 function pad(n){ return String(n).padStart(2,'0'); }
@@ -163,15 +164,36 @@ function renderText(){
 
 function render(){ renderClock(); renderText(); }
 
-function setByMinuteAngle(clientX, clientY){
+function getPointerPos(clientX, clientY){
   const rect = cv.getBoundingClientRect();
-  const x = (clientX - rect.left) * (cv.width/rect.width);
-  const y = (clientY - rect.top) * (cv.height/rect.height);
-  const cx=cv.width/2, cy=cv.height/2;
-  const a = Math.atan2(y-cy, x-cx); // -PI..PI from +x
-  let t = a + Math.PI/2; if(t<0) t += Math.PI*2;
-  const newM = Math.round((t/(Math.PI*2))*60)%60;
+  return {
+    x: (clientX - rect.left) * (cv.width/rect.width),
+    y: (clientY - rect.top) * (cv.height/rect.height)
+  };
+}
 
+function getClockAngleFromPointer(clientX, clientY){
+  const p = getPointerPos(clientX, clientY);
+  const cx=cv.width/2, cy=cv.height/2;
+  const a = Math.atan2(p.y-cy, p.x-cx);
+  let t = a + Math.PI/2; if(t<0) t += Math.PI*2;
+  return t;
+}
+
+function getHandTips(){
+  const cx=cv.width/2, cy=cv.height/2, r=160;
+  const ma = (Math.PI*2)*(time.m/60)-Math.PI/2;
+  const hFrac = (hour24()%12) + time.m/60;
+  const ha = (Math.PI*2)*(hFrac/12)-Math.PI/2;
+  return {
+    min:{x:cx+Math.cos(ma)*(r-35), y:cy+Math.sin(ma)*(r-35)},
+    hour:{x:cx+Math.cos(ha)*(r-72), y:cy+Math.sin(ha)*(r-72)}
+  };
+}
+
+function setByMinuteAngle(clientX, clientY){
+  const t = getClockAngleFromPointer(clientX, clientY);
+  const newM = Math.round((t/(Math.PI*2))*60)%60;
   const prevM = time.m;
   time.m = newM;
   if(prevM>=50 && newM<=10) time.h = (time.h+1)%24;
@@ -179,17 +201,37 @@ function setByMinuteAngle(clientX, clientY){
   render();
 }
 
-cv.addEventListener('pointerdown', e=>{ e.preventDefault(); draggingMin=true; cv.setPointerCapture(e.pointerId); setByMinuteAngle(e.clientX,e.clientY); });
-cv.addEventListener('pointermove', e=>{ if(draggingMin){ e.preventDefault(); setByMinuteAngle(e.clientX,e.clientY); } });
-cv.addEventListener('pointerup', ()=> draggingMin=false);
-cv.addEventListener('pointercancel', ()=> draggingMin=false);
+function setByHourAngle(clientX, clientY){
+  const t = getClockAngleFromPointer(clientX, clientY);
+  const totalMin12 = Math.round((t/(Math.PI*2))*720)%720; // 12小時內總分鐘
+  const h12 = Math.floor(totalMin12/60)%12;
+  const m = totalMin12%60;
+  const ring2 = hour24()>=12;
+  time.h = ring2 ? (h12+12)%24 : h12;
+  time.m = m;
+  render();
+}
+
+cv.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  const p=getPointerPos(e.clientX,e.clientY);
+  const tips=getHandTips();
+  const dMin=Math.hypot(p.x-tips.min.x,p.y-tips.min.y);
+  const dHour=Math.hypot(p.x-tips.hour.x,p.y-tips.hour.y);
+  if(dHour<22 && dHour<dMin){ draggingHour=true; setByHourAngle(e.clientX,e.clientY); }
+  else { draggingMin=true; setByMinuteAngle(e.clientX,e.clientY); }
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{ if(draggingMin||draggingHour){ e.preventDefault(); if(draggingHour) setByHourAngle(e.clientX,e.clientY); else setByMinuteAngle(e.clientX,e.clientY);} });
+cv.addEventListener('pointerup', ()=>{ draggingMin=false; draggingHour=false; });
+cv.addEventListener('pointercancel', ()=>{ draggingMin=false; draggingHour=false; });
 
 modeSel.addEventListener('change', render);
 document.getElementById('add5').onclick = ()=>{ time.m+=5; if(time.m>=60){time.m-=60; time.h=(time.h+1)%24;} render(); };
 document.getElementById('sub5').onclick = ()=>{ time.m-=5; if(time.m<0){time.m+=60; time.h=(time.h+23)%24;} render(); };
 document.getElementById('setNow').onclick = ()=>{ const d=new Date(); time.h=d.getHours(); time.m=d.getMinutes(); render(); };
 
-document.addEventListener('touchmove', (e)=>{ if(draggingMin) e.preventDefault(); }, {passive:false});
+document.addEventListener('touchmove', (e)=>{ if(draggingMin||draggingHour) e.preventDefault(); }, {passive:false});
 
 render();
 </script>
