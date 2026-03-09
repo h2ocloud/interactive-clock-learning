@@ -11,7 +11,7 @@
       --ok:#87a989;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:"Noto Sans TC",system-ui;background:linear-gradient(140deg,#f5f0ea,#edf1f2);color:var(--ink)}
+    body{margin:0;font-family:"Noto Sans TC",system-ui;background:linear-gradient(140deg,#f5f0ea,#edf1f2);color:var(--ink);overscroll-behavior:none}
     .wrap{max-width:1080px;margin:0 auto;padding:16px}
     .title{font-size:28px;font-weight:800}
     .sub{color:var(--muted);margin:6px 0 14px}
@@ -25,7 +25,7 @@
     .pill{background:#f7f3ee;border:1px solid var(--line);border-radius:12px;padding:10px}
     .pill b{display:block;font-size:22px;color:#6a7180}
     .legend{font-size:13px;color:var(--muted)}
-    canvas{width:100%;height:auto;display:block}
+    canvas{width:100%;height:auto;display:block;touch-action:none}
     .sec h3{margin:0 0 8px}
     .base-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
     .base{background:#f8f5f1;border:1px dashed #d5cec4;border-radius:12px;padding:10px}
@@ -38,7 +38,7 @@
 <body>
   <div class="wrap">
     <div class="title">🕰️ 互動式時鐘理解工具</div>
-    <div class="sub">可切換 12/24 小時制、拖曳分針互動，搭配數位時鐘與進位概念（60/12/24/10）教學。</div>
+    <div class="sub">可切換 12/24 小時制、拖曳分針互動，搭配數位時鐘與進位概念（60/12/24）教學。</div>
 
     <div class="grid">
       <div class="card">
@@ -56,6 +56,7 @@
           <div class="pill">目前小時<b id="hourVal">-</b></div>
           <div class="pill">目前分鐘<b id="minVal">-</b></div>
         </div>
+        <div class="pill" id="ringBox" style="margin-top:10px;background:#efe8f8;border-color:#d3c6ea;display:none">24 小時圈數：<b id="ringVal">第 1 圈（0-12）</b></div>
         <div class="hint">操作方式：用滑鼠/手指拖曳「分針」即可調整時間，時針會依真實時鐘比例同步移動。</div>
       </div>
 
@@ -64,8 +65,8 @@
         <div class="base-grid">
           <div class="base"><h4>60 進位（分鐘）</h4><div class="v" id="base60">0 / 60</div><div class="legend">一圈 = 60 分鐘</div></div>
           <div class="base"><h4>12 進位（傳統鐘面）</h4><div class="v" id="base12">0 / 12</div><div class="legend">一圈 = 12 小時</div></div>
-          <div class="base"><h4>24 進位（一天）</h4><div class="v" id="base24">0 / 24</div><div class="legend">一天 = 24 小時</div></div>
-          <div class="base"><h4>10 進位（日常數學）</h4><div class="v" id="base10">0 (十進位)</div><div class="legend">一般數學用 0-9 逢 10 進位</div></div>
+          <div class="base"><h4>24 進位（一天）</h4><div class="v" id="base24">0 / 24</div><div class="legend">一天 = 24 小時（分兩圈：0-12、13-24）</div></div>
+          <div class="base"><h4>24 小時圈數提示</h4><div class="v" id="base24ring">第 1 圈</div><div class="legend">第一圈 0-12；第二圈 13-24</div></div>
         </div>
         <div class="hint" id="concept"></div>
       </div>
@@ -133,14 +134,19 @@ function renderText(){
   document.getElementById('hourVal').textContent = mode==='24' ? `${h24} 時` : `${hour12()} 點${ampm.trim()}`;
   document.getElementById('minVal').textContent = `${time.m} 分`;
 
+  const ring = h24 < 12 ? 1 : 2;
+  const ringText = ring===1 ? '第 1 圈（0-12）' : '第 2 圈（13-24）';
+  document.getElementById('ringVal').textContent = ringText;
+  document.getElementById('ringBox').style.display = mode==='24' ? 'block' : 'none';
+
   document.getElementById('base60').textContent = `${time.m} / 60`;
   document.getElementById('base12').textContent = `${((hour24()%12)||12)} / 12`;
   document.getElementById('base24').textContent = `${h24} / 24`;
-  document.getElementById('base10').textContent = `${h24*60+time.m} (從 00:00 起的總分鐘)`;
+  document.getElementById('base24ring').textContent = ring===1 ? '第 1 圈（0-12）' : '第 2 圈（13-24）';
 
   document.getElementById('concept').textContent =
-    `教學提示：現在是 ${mode==='24'?`${h24} 點`:`${hour12()} 點${ampm}`} ${time.m} 分。`+
-    ` 分鐘是 60 進位；鐘面小時是 12 進位；一天是 24 小時；數學計算多用 10 進位。`;
+    `教學提示：現在是 ${mode==='24'?`${h24} 點（${ringText}）`:`${hour12()} 點${ampm}`} ${time.m} 分。`+
+    ` 分鐘是 60 進位；鐘面小時是 12 進位；一天是 24 小時。`;
 }
 
 function render(){ renderClock(); renderText(); }
@@ -161,8 +167,8 @@ function setByMinuteAngle(clientX, clientY){
   render();
 }
 
-cv.addEventListener('pointerdown', e=>{ draggingMin=true; cv.setPointerCapture(e.pointerId); setByMinuteAngle(e.clientX,e.clientY); });
-cv.addEventListener('pointermove', e=>{ if(draggingMin) setByMinuteAngle(e.clientX,e.clientY); });
+cv.addEventListener('pointerdown', e=>{ e.preventDefault(); draggingMin=true; cv.setPointerCapture(e.pointerId); setByMinuteAngle(e.clientX,e.clientY); });
+cv.addEventListener('pointermove', e=>{ if(draggingMin){ e.preventDefault(); setByMinuteAngle(e.clientX,e.clientY); } });
 cv.addEventListener('pointerup', ()=> draggingMin=false);
 cv.addEventListener('pointercancel', ()=> draggingMin=false);
 
@@ -170,6 +176,8 @@ modeSel.addEventListener('change', render);
 document.getElementById('add5').onclick = ()=>{ time.m+=5; if(time.m>=60){time.m-=60; time.h=(time.h+1)%24;} render(); };
 document.getElementById('sub5').onclick = ()=>{ time.m-=5; if(time.m<0){time.m+=60; time.h=(time.h+23)%24;} render(); };
 document.getElementById('setNow').onclick = ()=>{ const d=new Date(); time.h=d.getHours(); time.m=d.getMinutes(); render(); };
+
+document.addEventListener('touchmove', (e)=>{ if(draggingMin) e.preventDefault(); }, {passive:false});
 
 render();
 </script>
