@@ -112,7 +112,7 @@ function renderClock(){
   ctx.fillStyle='#7b7a86'; ctx.font='700 22px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   for(let i=0;i<12;i++){
     const a = (Math.PI*2)*((i+1)/12)-Math.PI/2;
-    const label = modeSel.value==='24' ? (labelStart + ((i+11)%12)) : (i+1);
+    const label = modeSel.value==='24' ? (labelStart + ((i+1)%12)) : (i+1);
     ctx.fillText(String(label), cx+Math.cos(a)*(r-42), cy+Math.sin(a)*(r-42));
   }
 
