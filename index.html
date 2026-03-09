@@ -47,7 +47,7 @@
         <canvas id="clock" width="380" height="380"></canvas>
         <div class="controls" style="margin-top:10px">
           <label>顯示制式
-            <select id="mode"><option value="12">12 小時制</option><option value="24">24 小時制</option></select>
+            <select id="mode"><option value="12">12 小時制</option><option value="24" selected>24 小時制</option></select>
           </label>
           <button id="setNow">設為現在</button>
           <button id="add5">+5 分</button>
@@ -107,7 +107,7 @@ function renderClock(){
   }
 
   // numbers (12hr fixed / 24hr ring-based)
-  const ring = (hour24()>=13) ? 2 : 1; // 第一圈 1-12；第二圈 13-24
+  const ring = (hour24()>=12) ? 2 : 1; // 第一圈 1-12；超過/到12後切第二圈
   ctx.fillStyle='#7b7a86'; ctx.font='700 22px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   for(let i=0;i<12;i++){
     const a = (Math.PI*2)*((i+1)/12)-Math.PI/2;
@@ -139,7 +139,7 @@ function renderText(){
   document.getElementById('hourVal').textContent = mode==='24' ? `${h24} 時` : `${hour12()} 點${ampm.trim()}`;
   document.getElementById('minVal').textContent = `${time.m} 分`;
 
-  const ring = (h24>=13) ? 2 : 1;
+  const ring = (h24>=12) ? 2 : 1;
   const ringText = ring===1 ? '第 1 圈（1-12）' : '第 2 圈（13-24）';
   const ringBox = document.getElementById('ringBox');
   document.getElementById('ringVal').textContent = ringText;
